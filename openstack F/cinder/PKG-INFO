@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: cinder
+Version: 2012.2
+Summary: block storage service
+Home-page: http://www.openstack.org/
+Author: OpenStack
+Author-email: cinder@lists.launchpad.net
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
