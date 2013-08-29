@@ -16,9 +16,8 @@
 #    under the License.
 
 """
-This auth module is intended to allow Openstack client-tools to select from a
-variety of authentication strategies, including NoAuth (the default), and
-Keystone (an identity management system).
+auth模块的作用是为了让Openstack客户端从多种认证策略中选择一种作为认证策略,
+包括无认证(默认)和Keystone (身份管理系统).
 
     > auth_plugin = AuthPlugin(creds)
 
