@@ -1,0 +1,7 @@
+pbr>=0.5.21,<1.0
+
+argparse
+PrettyTable>=0.6,<0.8
+python-keystoneclient>=0.3.0
+pyOpenSSL
+warlock>=1.0.1,<2
