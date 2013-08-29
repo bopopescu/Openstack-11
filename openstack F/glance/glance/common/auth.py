@@ -31,84 +31,83 @@ Keystone (an identity management system).
     http://service_endpoint/
 """
 import json
-import urlparse
+import urlparse     #url解析
 
-import httplib2
+import httplib2     #网络访问
 
-from glance.common import exception
-import glance.openstack.common.log as logging
+from glance.common import exception             #glance异常处理
+import glance.openstack.common.log as logging   #glance日志  
 
 
 LOG = logging.getLogger(__name__)
 
 
-class BaseStrategy(object):
+class BaseStrategy(object):                     #认证策略基类
     def __init__(self):
         self.auth_token = None
         # TODO(sirp): Should expose selecting public/internal/admin URL.
         self.management_url = None
 
-    def authenticate(self):
+    def authenticate(self):                     #认证方法
         raise NotImplementedError
 
     @property
-    def is_authenticated(self):
+    def is_authenticated(self):                 #是否已认证
         raise NotImplementedError
 
     @property
-    def strategy(self):
+    def strategy(self):                         #认证策略
         raise NotImplementedError
 
 
-class NoAuthStrategy(BaseStrategy):
-    def authenticate(self):
+class NoAuthStrategy(BaseStrategy):             #无认证策略
+    def authenticate(self):                     
         pass
 
     @property
-    def is_authenticated(self):
+    def is_authenticated(self):                 #是否已认证：因为无认证策略，直接返回True
         return True
 
     @property
-    def strategy(self):
+    def strategy(self):                         #认证策略：无认证策略，返回'noauth'
         return 'noauth'
 
 
-class KeystoneStrategy(BaseStrategy):
-    MAX_REDIRECTS = 10
+class KeystoneStrategy(BaseStrategy):           #使用keystone认证
+    MAX_REDIRECTS = 10                          #设置最大尝试认证次数为10次
 
-    def __init__(self, creds, insecure=False):
+    def __init__(self, creds, insecure=False):  #creds认证需要的信息，insecure是否使用ssl
         self.creds = creds
         self.insecure = insecure
         super(KeystoneStrategy, self).__init__()
 
-    def check_auth_params(self):
-        # Ensure that supplied credential parameters are as required
+    def check_auth_params(self):                 #检查认证参数 
+        # 确保按要求提供认证参数
         for required in ('username', 'password', 'auth_url',
                          'strategy'):
             if required not in self.creds:
                 raise exception.MissingCredentialError(required=required)
-        if self.creds['strategy'] != 'keystone':
+        if self.creds['strategy'] != 'keystone': #检查认证策略是否为keystone
             raise exception.BadAuthStrategy(expected='keystone',
                                             received=self.creds['strategy'])
-        # For v2.0 also check tenant is present
+        # 使用Keystone V2.0 还会检查tenant是否存在
         if self.creds['auth_url'].rstrip('/').endswith('v2.0'):
             if 'tenant' not in self.creds:
                 raise exception.MissingCredentialError(required='tenant')
 
     def authenticate(self):
-        """Authenticate with the Keystone service.
+        """通过keystone服务进行认证.
 
-        There are a few scenarios to consider here:
+        需要注意的一些情况:
 
-        1. Which version of Keystone are we using? v1 which uses headers to
-           pass the credentials, or v2 which uses a JSON encoded request body?
+        1. 我们是使用的什么版本的keystone? 
+           v1使用包含在request headers中的键值对传递认证信息.
+           v2使用包含在request body中的JSON数据传递认证信息.
 
-        2. Keystone may respond back with a redirection using a 305 status
-           code.
+        2. Keystone可能会使用305状态码返回一个重定向地址.
 
-        3. We may attempt a v1 auth when v2 is what's called for. In this
-           case, we rewrite the url to contain /v2.0/ and retry using the v2
-           protocol.
+        3. 我们可能会在请求v2的情况下尝试请求v1. 如果这样的话,
+            我们会重写url并包含/v2.0/，然后重试请求v2.
         """
         def _authenticate(auth_url):
             # If OS_AUTH_URL is missing a trailing slash add one
