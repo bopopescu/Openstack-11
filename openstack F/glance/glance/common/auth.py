@@ -114,26 +114,26 @@ class KeystoneStrategy(BaseStrategy):           #使用keystone认证
                 auth_url += '/'
             token_url = urlparse.urljoin(auth_url, "tokens")
             # 1. Check Keystone version
-            is_v2 = auth_url.rstrip('/').endswith('v2.0')
+            is_v2 = auth_url.rstrip('/').endswith('v2.0')        #auth_url是否以‘v2.0’结尾
             if is_v2:
-                self._v2_auth(token_url)
+                self._v2_auth(token_url)        #如果是'v2.0'结尾，调用_v2_auth
             else:
-                self._v1_auth(token_url)
+                self._v1_auth(token_url)        #如果不是'v2.0'结尾，调用_v1_auth
 
-        self.check_auth_params()
+        self.check_auth_params()                #检查认证参数
         auth_url = self.creds['auth_url']
-        for _ in range(self.MAX_REDIRECTS):
+        for _ in range(self.MAX_REDIRECTS):     #循环最大尝试次数
             try:
-                _authenticate(auth_url)
-            except exception.AuthorizationRedirect as e:
+                _authenticate(auth_url)         #调用认证方法
+            except exception.AuthorizationRedirect as e:   #认证链接重定向
                 # 2. Keystone may redirect us
                 auth_url = e.url
-            except exception.AuthorizationFailure:
+            except exception.AuthorizationFailure: 
                 # 3. In some configurations nova makes redirection to
                 # v2.0 keystone endpoint. Also, new location does not
                 # contain real endpoint, only hostname and port.
                 if 'v2.0' not in auth_url:
-                    auth_url = urlparse.urljoin(auth_url, 'v2.0/')
+                    auth_url = urlparse.urljoin(auth_url, 'v2.0/')  #如果'v2.00'不在auth_url中，则为其加上
             else:
                 # If we sucessfully auth'd, then memorize the correct auth_url
                 # for future use.
@@ -141,9 +141,9 @@ class KeystoneStrategy(BaseStrategy):           #使用keystone认证
                 break
         else:
             # Guard against a redirection loop
-            raise exception.MaxRedirectsExceeded(redirects=self.MAX_REDIRECTS)
+            raise exception.MaxRedirectsExceeded(redirects=self.MAX_REDIRECTS)   #重试已到最大次数
 
-    def _v1_auth(self, token_url):
+    def _v1_auth(self, token_url):       #v1认证方法
         creds = self.creds
 
         headers = {}
@@ -151,17 +151,17 @@ class KeystoneStrategy(BaseStrategy):           #使用keystone认证
         headers['X-Auth-Key'] = creds['password']
 
         tenant = creds.get('tenant')
-        if tenant:
+        if tenant:                                  #如果tenant有值，则为headers添加'X-Auth-Tenant'属性
             headers['X-Auth-Tenant'] = tenant
 
-        resp, resp_body = self._do_request(token_url, 'GET', headers=headers)
+        resp, resp_body = self._do_request(token_url, 'GET', headers=headers)       #调用_do_request方法得到response对象和response body
 
         def _management_url(self, resp):
             for url_header in ('x-image-management-url',
                                'x-server-management-url',
                                'x-glance'):
                 try:
-                    return resp[url_header]
+                    return resp[url_header]     #遍历'x-image-management-url','x-server-management-url','x-glance'，如果存在则加入response中
                 except KeyError as e:
                     not_found = e
             raise not_found
@@ -183,11 +183,11 @@ class KeystoneStrategy(BaseStrategy):           #使用keystone认证
         else:
             raise Exception(_('Unexpected response: %s') % resp.status)
 
-    def _v2_auth(self, token_url):
+    def _v2_auth(self, token_url):      #v2认证方法
 
         creds = self.creds
 
-        creds = {
+        creds = {                                   #构造creds
             "auth": {
                 "tenantName": creds['tenant'],
                 "passwordCredentials": {
@@ -199,15 +199,15 @@ class KeystoneStrategy(BaseStrategy):           #使用keystone认证
 
         headers = {}
         headers['Content-Type'] = 'application/json'
-        req_body = json.dumps(creds)
+        req_body = json.dumps(creds)                #转换成json格式并赋值给req_body
 
-        resp, resp_body = self._do_request(
+        resp, resp_body = self._do_request(         #使用post方式发送请求，得到resp,resp_body
                 token_url, 'POST', headers=headers, body=req_body)
 
         if resp.status == 200:
             resp_auth = json.loads(resp_body)['access']
             creds_region = self.creds.get('region')
-            self.management_url = get_endpoint(resp_auth['serviceCatalog'],
+            self.management_url = get_endpoint(resp_auth['serviceCatalog'],  
                                                endpoint_region=creds_region)
             self.auth_token = resp_auth['token']['id']
         elif resp.status == 305:
@@ -231,7 +231,7 @@ class KeystoneStrategy(BaseStrategy):           #使用keystone认证
 
     def _do_request(self, url, method, headers=None, body=None):
         headers = headers or {}
-        conn = httplib2.Http()
+        conn = httplib2.Http()          #通过httplib2.Http()发送请求
         conn.force_exception_to_status_code = True
         conn.disable_ssl_certificate_validation = self.insecure
         headers['User-Agent'] = 'glance-client'
